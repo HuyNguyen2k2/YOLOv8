@@ -310,16 +310,17 @@ class ConfusionMatrix:
         self.iou_thres = iou_thres
 
     def process_cls_preds(self, preds, targets):
-        """
-        Update confusion matrix for classification task.
+    """
+    Cập nhật ma trận nhầm lẫn cho nhiệm vụ phân loại.
 
-        Args:
-            preds (Array[N, min(nc,5)]): Predicted class labels.
-            targets (Array[N, 1]): Ground truth class labels.
-        """
-        preds, targets = torch.cat(preds)[:, 0], torch.cat(targets)
-        for p, t in zip(preds.cpu().numpy(), targets.cpu().numpy()):
-            self.matrix[p][t] += 1
+    Args:
+        preds (List[Tensor]): Các nhãn lớp được dự đoán.
+        targets (List[Tensor]): Các nhãn lớp thực tế.
+    """
+    preds = torch.cat(preds)[:, 0]
+    targets = torch.cat(targets)
+    for p, t in zip(preds.cpu().numpy(), targets.cpu().numpy()):
+        self.matrix[p][t] += 1
 
     def process_batch(self, detections, gt_bboxes, gt_cls):
         """
