@@ -397,8 +397,6 @@ class ConfusionMatrix:
             names (tuple): Names of classes, used as labels on the plot.
             on_plot (func): An optional callback to pass plots path and data when they are rendered.
         """
-        import seaborn as sn
-
         array = self.matrix / ((self.matrix.sum(0).reshape(1, -1) + 1e-9) if normalize else 1)  # normalize columns
         array[array < 0.005] = np.nan  # don't annotate (would appear as 0.00)
 
@@ -435,6 +433,24 @@ class ConfusionMatrix:
         """Print the confusion matrix to the console."""
         for i in range(self.nc + 1):
             LOGGER.info(" ".join(map(str, self.matrix[i])))
+
+# Test the class
+# Create an instance of the ConfusionMatrix class
+conf_matrix = ConfusionMatrix(nc=3)
+
+# Perform some fake classification predictions
+preds = [[torch.tensor([0, 1]), torch.tensor([1, 2])]]
+targets = [[torch.tensor([0]), torch.tensor([1])]]
+conf_matrix.process_cls_preds(preds, targets)
+
+# Perform some fake detection predictions
+detections = torch.tensor([[100, 200, 300, 400, 0.7, 1], [150, 250, 350, 450, 0.6, 2]])
+gt_bboxes = torch.tensor([[100, 200, 300, 400]])
+gt_cls = torch.tensor([1])
+conf_matrix.process_batch(detections, gt_bboxes, gt_cls)
+
+# Plot the confusion matrix
+conf_matrix.plot()
 
 
 def smooth(y, f=0.05):
