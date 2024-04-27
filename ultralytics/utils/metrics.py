@@ -310,17 +310,16 @@ class ConfusionMatrix:
         self.iou_thres = iou_thres
 
     def process_cls_preds(self, preds, targets):
-    """
-    Cập nhật ma trận nhầm lẫn cho nhiệm vụ phân loại.
+        """
+        Update confusion matrix for classification task.
 
-    Args:
-        preds (List[Tensor]): Các nhãn lớp được dự đoán.
-        targets (List[Tensor]): Các nhãn lớp thực tế.
-    """
-    preds = torch.cat(preds)[:, 0]
-    targets = torch.cat(targets)
-    for p, t in zip(preds.cpu().numpy(), targets.cpu().numpy()):
-        self.matrix[p][t] += 1
+        Args:
+            preds (Array[N, min(nc,5)]): Predicted class labels.
+            targets (Array[N, 1]): Ground truth class labels.
+        """
+        preds, targets = torch.cat(preds)[:, 0], torch.cat(targets)
+        for p, t in zip(preds.cpu().numpy(), targets.cpu().numpy()):
+            self.matrix[p][t] += 1
 
     def process_batch(self, detections, gt_bboxes, gt_cls):
         """
@@ -332,7 +331,7 @@ class ConfusionMatrix:
             gt_bboxes (Array[M, 4]): Ground truth bounding boxes with xyxy format.
             gt_cls (Array[M]): The class labels.
         """
-        if gt_cls.size(0) == 0:  # Check if labels is empty
+        if gt_cls.shape[0] == 0:  # Check if labels is empty
             if detections is not None:
                 detections = detections[detections[:, 4] > self.conf]
                 detection_classes = detections[:, 5].int()
@@ -398,12 +397,17 @@ class ConfusionMatrix:
             names (tuple): Names of classes, used as labels on the plot.
             on_plot (func): An optional callback to pass plots path and data when they are rendered.
         """
+        import seaborn as sn
+
         array = self.matrix / ((self.matrix.sum(0).reshape(1, -1) + 1e-9) if normalize else 1)  # normalize columns
         array[array < 0.005] = np.nan  # don't annotate (would appear as 0.00)
 
-        fig, ax = plt.subplots(1, 1, figsize=(12, 9), tight_layout=True)
+        
+        fig, ax = plt.subplots(1, 1, figsize=(10, 6), tight_layout=True)
         nc, nn = self.nc, len(names)  # number of classes, names
-        sn.set(font_scale=1.0 if nc < 50 else 0.8)  # for label size
+        sn.set(font_scale=1.5 if nc < 50 else 0.8)  # for label size
+        
+        
         labels = (0 < nn < 99) and (nn == nc)  # apply names to ticklabels
         ticklabels = (list(names) + ["background"]) if labels else "auto"
         with warnings.catch_warnings():
@@ -412,7 +416,7 @@ class ConfusionMatrix:
                 array,
                 ax=ax,
                 annot=nc < 30,
-                annot_kws={"size": 8},
+                annot_kws={"size": 12},
                 cmap="Blues",
                 fmt=".2f" if normalize else ".0f",
                 square=True,
@@ -435,23 +439,6 @@ class ConfusionMatrix:
         for i in range(self.nc + 1):
             LOGGER.info(" ".join(map(str, self.matrix[i])))
 
-# Test the class
-# Create an instance of the ConfusionMatrix class
-conf_matrix = ConfusionMatrix(nc=3)
-
-# Perform some fake classification predictions
-preds = [[torch.tensor([0, 1]), torch.tensor([1, 2])]]
-targets = [[torch.tensor([0]), torch.tensor([1])]]
-conf_matrix.process_cls_preds(preds, targets)
-
-# Perform some fake detection predictions
-detections = torch.tensor([[100, 200, 300, 400, 0.7, 1], [150, 250, 350, 450, 0.6, 2]])
-gt_bboxes = torch.tensor([[100, 200, 300, 400]])
-gt_cls = torch.tensor([1])
-conf_matrix.process_batch(detections, gt_bboxes, gt_cls)
-
-# Plot the confusion matrix
-conf_matrix.plot()
 
 
 def smooth(y, f=0.05):
