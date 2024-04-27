@@ -288,6 +288,11 @@ def smooth_BCE(eps=0.1):
     """
     return 1.0 - 0.5 * eps, 0.5 * eps
 
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sn
+import warnings
+from pathlib import Path
 
 class ConfusionMatrix:
     """
@@ -385,7 +390,7 @@ class ConfusionMatrix:
         # fn = self.matrix.sum(0) - tp  # false negatives (missed detections)
         return (tp[:-1], fp[:-1]) if self.task == "detect" else (tp, fp)  # remove background class if task=detect
 
-    @TryExcept("WARNING ⚠️ ConfusionMatrix plot failure")
+     @TryExcept("WARNING ⚠️ ConfusionMatrix plot failure")
     @plt_settings()
     def plot(self, normalize=True, save_dir="", names=(), on_plot=None):
         """
@@ -397,17 +402,12 @@ class ConfusionMatrix:
             names (tuple): Names of classes, used as labels on the plot.
             on_plot (func): An optional callback to pass plots path and data when they are rendered.
         """
-        import seaborn as sn
-
         array = self.matrix / ((self.matrix.sum(0).reshape(1, -1) + 1e-9) if normalize else 1)  # normalize columns
-        array[array < 0.005] = np.nan  # don't annotate (would appear as 0.00)
 
-        
         fig, ax = plt.subplots(1, 1, figsize=(10, 6), tight_layout=True)
         nc, nn = self.nc, len(names)  # number of classes, names
         sn.set(font_scale=1.5 if nc < 50 else 0.8)  # for label size
-        
-        
+
         labels = (0 < nn < 99) and (nn == nc)  # apply names to ticklabels
         ticklabels = (list(names) + ["background"]) if labels else "auto"
         with warnings.catch_warnings():
@@ -424,6 +424,14 @@ class ConfusionMatrix:
                 xticklabels=ticklabels,
                 yticklabels=ticklabels,
             ).set_facecolor((1, 1, 1))
+        
+        # Add ratio to each cell
+        for i in range(array.shape[0]):
+            for j in range(array.shape[1]):
+                ratio = array[i, j]
+                if not np.isnan(ratio):  # Skip NaN values
+                    ax.text(j + 0.5, i + 0.5, f'{ratio:.2f}', ha='center', va='center', color='black')
+
         title = "Confusion Matrix" + " Normalized" * normalize
         ax.set_xlabel("True")
         ax.set_ylabel("Predicted")
@@ -433,7 +441,7 @@ class ConfusionMatrix:
         plt.close(fig)
         if on_plot:
             on_plot(plot_fname)
-
+            
     def print(self):
         """Print the confusion matrix to the console."""
         for i in range(self.nc + 1):
